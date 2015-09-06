@@ -21,9 +21,13 @@ const (
 type Logger struct {
 	Level  LogLevel
 	syslog *syslog.Writer
+	opened bool
 }
 
 func (l Logger) write(level LogLevel, f func(string) error, format string, v ...interface{}) error {
+	if !l.opened {
+		panic("OpenLog() must be called first")
+	}
 	if l.Level > level {
 		return nil
 	}
@@ -56,10 +60,12 @@ func init() {
 	log.SetFlags(0)
 }
 
-func openLog() {
+func OpenLog() {
+	Log.opened = true
+
 	output := GetConfigLine("log/output")
 	if len(output) == 0 {
-		return
+		panic("require non-empty config/log/output")
 	}
 
 	logtype := GetConfigLine("log/type")
