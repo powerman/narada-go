@@ -8,6 +8,10 @@ import (
 	"path"
 )
 
+func init() {
+	log.SetFlags(0)
+}
+
 type LogLevel byte
 
 const (
@@ -54,11 +58,7 @@ func (l Logger) DEBUG(format string, v ...interface{}) error {
 	return l.write(LogDEBUG, l.syslog.Debug, format, v...)
 }
 
-var Log Logger
-
-func init() {
-	log.SetFlags(0)
-}
+var Log = &Logger{}
 
 func OpenLog() {
 	Log.opened = true
