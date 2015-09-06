@@ -29,5 +29,5 @@ WAIT:
 			log.Fatal(err)
 		}
 	}
-	connectLog()
+	openLog()
 }
