@@ -5,9 +5,11 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 )
 
-var invalidName = regexp.MustCompile(`\A[.][.]?/`)
+var invalidName = regexp.MustCompile(`(?:\A|/)[.][.]?/`)
 var validName = regexp.MustCompile(`\A(?:[\w.-]+/)*[\w.-]+\z`)
 
 // GetConfig return contents of file "config/"+path.
@@ -45,4 +47,20 @@ func GetConfigLine(path string) string {
 		cfg = cfg[:n]
 	}
 	return string(cfg)
+}
+
+// GetConfigInt return integer from first line of file "config/"+path.
+// If file not exists it will return 0.
+// Panics if unable to read config or it contain more than one line or
+// that line doesn't contain one integer.
+func GetConfigInt(path string) int {
+	str := GetConfigLine(path)
+	if str == "" {
+		return 0
+	}
+	i, err := strconv.Atoi(strings.Trim(str, " \t\r"))
+	if err != nil {
+		panic("config " + path + " must contain integer")
+	}
+	return i
 }
