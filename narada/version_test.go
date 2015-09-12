@@ -2,9 +2,11 @@ package narada
 
 import "testing"
 
-func TestVERSION(t *testing.T) {
+func TestVersion(t *testing.T) {
 	want := "1.2.3+example-1234567890"
-	if VERSION != want {
-		t.Errorf("VERSION = %q, want %q", VERSION, want)
+	if ver, err := Version(); err != nil {
+		t.Errorf("Version(), err = %v", err)
+	} else if ver != want {
+		t.Errorf("Version() = %q, want %q", ver, want)
 	}
 }

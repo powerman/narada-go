@@ -2,6 +2,7 @@ package narada
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -9,8 +10,26 @@ import (
 	"strings"
 )
 
+const dir = "config/"
+
 var invalidName = regexp.MustCompile(`(?:\A|/)[.][.]?/`)
 var validName = regexp.MustCompile(`\A(?:[\w.-]+/)*[\w.-]+\z`)
+
+var open = func(name string) (io.ReadCloser, error) {
+	return os.Open(name)
+}
+
+// FakeConfig make GetConfig() return values from configs (keys are config
+// names) instead of real files. If configs doesn't have a key for some
+// config file - it will work as usually, by reading real file.
+func FakeConfig(configs map[string]string) {
+	open = func(name string) (io.ReadCloser, error) {
+		if content, ok := configs[name[len(dir):]]; ok {
+			return ioutil.NopCloser(strings.NewReader(content)), nil
+		}
+		return os.Open(name)
+	}
+}
 
 // GetConfig return contents of file "config/"+path.
 // If file not exists it will return nil without any error.
@@ -19,7 +38,8 @@ func GetConfig(path string) ([]byte, error) {
 	if invalidName.MatchString(path) || !validName.MatchString(path) {
 		panic("invalid config name: " + path)
 	}
-	file, err := os.Open("config/" + path)
+	file, err := open(dir + path)
+	defer file.Close()
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil

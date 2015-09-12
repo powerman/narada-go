@@ -3,30 +3,18 @@ package narada
 import (
 	"bytes"
 	"io/ioutil"
-	"log"
-	"time"
 )
 
-// Project's version.
-var VERSION string
-
-func init() {
-	Bootstrap(func() {
-		buf, err := ioutil.ReadFile("VERSION")
-		if err != nil {
-			log.Fatalf("unable to read VERSION: %v", err)
-		}
-		VERSION = string(bytes.TrimRight(buf, " \r\n"))
-	})
-}
-
-const BootstrapLockWait = 15 * time.Second
-
-func Bootstrap(f func()) {
-	lock, err := SharedLock(BootstrapLockWait)
+// Version returns project's version.
+func Version() (version string, err error) {
+	lock, err := SharedLock(0)
 	if err != nil {
-		log.Fatal("can't get bootstrap lock")
+		return
 	}
-	defer lock.UnLock()
-	f()
+	buf, err := ioutil.ReadFile("VERSION")
+	lock.UnLock()
+	if err != nil {
+		return
+	}
+	return string(bytes.TrimRight(buf, " \r\n")), nil
 }

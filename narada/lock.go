@@ -24,6 +24,8 @@ type Lock struct {
 // project data (files or database).
 //
 // If wait <= 0 will wait forever until lock will be granted.
+//
+// Do nothing if $NARADA_SKIP_LOCK is not empty.
 func SharedLock(wait time.Duration) (l Lock, err error) {
 	var waited time.Duration
 	if os.Getenv("NARADA_SKIP_LOCK") != "" {
@@ -50,6 +52,8 @@ func SharedLock(wait time.Duration) (l Lock, err error) {
 }
 
 // UnLock free lock set by SharedLock() (or second lock set by ExclusiveLock()).
+//
+// Do nothing if $NARADA_SKIP_LOCK is not empty.
 func (l Lock) UnLock() error {
 	if os.Getenv("NARADA_SKIP_LOCK") != "" {
 		return nil

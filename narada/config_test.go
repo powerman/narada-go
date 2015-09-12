@@ -6,6 +6,30 @@ import (
 	"testing"
 )
 
+func TestFakeConfig(t *testing.T) {
+	cases := []struct {
+		path    string
+		want    []byte
+		wanterr error
+	}{
+		{"log/level", []byte("INFO"), nil},
+		{"fake", []byte("FAKE"), nil},
+	}
+	FakeConfig(map[string]string{"fake": "FAKE"})
+	for _, c := range cases {
+		buf, err := GetConfig(c.path)
+		if buf != nil {
+			buf = bytes.TrimRight(buf, "\n")
+		}
+		if err == nil && c.wanterr != nil || err != nil && c.wanterr == nil || err != nil && err.Error() != c.wanterr.Error() {
+			t.Errorf("FakeGetConfig(%q), err = %v", c.path, err)
+		}
+		if buf == nil && c.want != nil || buf != nil && c.want == nil || bytes.Compare(buf, c.want) != 0 {
+			t.Errorf("FakeGetConfig(%q) = %#v, want = %#v", c.path, buf, c.want)
+		}
+	}
+}
+
 func TestGetConfig(t *testing.T) {
 	cases := []struct {
 		path    string

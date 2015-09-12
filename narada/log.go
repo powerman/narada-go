@@ -1,6 +1,7 @@
 package narada
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"log/syslog"
@@ -8,8 +9,54 @@ import (
 	"path"
 )
 
-func init() {
+var logLevel = LogDEBUG
+var syslogLogger *syslog.Writer
+
+var InitLogError = initLog()
+
+// initLog is not thread-safe.
+func initLog() error {
+	lock, err := SharedLock(0)
+	if err != nil {
+		return err
+	}
+	defer lock.UnLock()
+
+	output := GetConfigLine("log/output")
+	if len(output) == 0 {
+		return errors.New("require non-empty config/log/output")
+	}
+
+	switch level := GetConfigLine("log/level"); level {
+	case "ERR":
+		logLevel = LogERR
+	case "WARN":
+		logLevel = LogWARN
+	case "NOTICE":
+		logLevel = LogNOTICE
+	case "INFO":
+		logLevel = LogINFO
+	case "DEBUG":
+		logLevel = LogDEBUG
+	default:
+		return errors.New("unsupported config/log/level: " + level)
+	}
+
+	logtype := GetConfigLine("log/type")
+	switch logtype {
+	case "":
+		logtype = "syslog"
+	case "syslog":
+	default:
+		return errors.New("unsupported config/log/type: " + logtype)
+	}
+
+	syslogLogger, err = syslog.Dial("unixgram", output, syslog.LOG_NOTICE|syslog.LOG_USER, path.Base(os.Args[0]))
+	if err != nil {
+		return err
+	}
 	log.SetFlags(0)
+	return nil
 }
 
 type LogLevel byte
@@ -22,79 +69,81 @@ const (
 	LogERR
 )
 
-type Logger struct {
-	Level  LogLevel
-	syslog *syslog.Writer
-	opened bool
-}
-
-func (l Logger) write(level LogLevel, f func(string) error, format string, v ...interface{}) error {
-	if !l.opened {
-		panic("OpenLog() must be called first")
+func (level LogLevel) String() string {
+	switch level {
+	case LogDEBUG:
+		return "DEBUG"
+	case LogINFO:
+		return "INFO"
+	case LogNOTICE:
+		return "NOTICE"
+	case LogWARN:
+		return "WARN"
+	case LogERR:
+		return "ERR"
 	}
-	if l.Level > level {
-		return nil
+	return "UNKNOWN"
+}
+
+type Log struct {
+	prefix string
+}
+
+func NewLog(prefix string) *Log {
+	return &Log{prefix: prefix}
+}
+
+func (l *Log) Prefix() string {
+	return l.prefix
+}
+
+func (l Log) ERR(format string, v ...interface{}) {
+	l.write(LogERR, format, v...)
+}
+
+func (l Log) WARN(format string, v ...interface{}) {
+	l.write(LogWARN, format, v...)
+}
+
+func (l Log) NOTICE(format string, v ...interface{}) {
+	l.write(LogNOTICE, format, v...)
+}
+
+func (l Log) INFO(format string, v ...interface{}) {
+	l.write(LogINFO, format, v...)
+}
+
+func (l Log) DEBUG(format string, v ...interface{}) {
+	l.write(LogDEBUG, format, v...)
+}
+
+func (l Log) write(level LogLevel, msg string, v ...interface{}) {
+	if logLevel > level {
+		return
 	}
-	return f(fmt.Sprintf(format, v...))
-}
-
-func (l Logger) ERR(format string, v ...interface{}) error {
-	return l.write(LogERR, l.syslog.Err, format, v...)
-}
-
-func (l Logger) WARN(format string, v ...interface{}) error {
-	return l.write(LogWARN, l.syslog.Warning, format, v...)
-}
-
-func (l Logger) NOTICE(format string, v ...interface{}) error {
-	return l.write(LogNOTICE, l.syslog.Notice, format, v...)
-}
-
-func (l Logger) INFO(format string, v ...interface{}) error {
-	return l.write(LogINFO, l.syslog.Info, format, v...)
-}
-
-func (l Logger) DEBUG(format string, v ...interface{}) error {
-	return l.write(LogDEBUG, l.syslog.Debug, format, v...)
-}
-
-var Log = &Logger{}
-
-func OpenLog() {
-	Log.opened = true
-
-	output := GetConfigLine("log/output")
-	if len(output) == 0 {
-		panic("require non-empty config/log/output")
+	if len(v) != 0 {
+		msg = fmt.Sprintf(msg, v...)
 	}
+	msg = l.prefix + msg
 
-	logtype := GetConfigLine("log/type")
-	switch logtype {
-	case "":
-		logtype = "syslog"
-	case "syslog":
-	default:
-		panic("unsupported config/log/type: " + logtype)
-	}
-
-	switch level := GetConfigLine("log/level"); level {
-	case "ERR":
-		Log.Level = LogERR
-	case "WARN":
-		Log.Level = LogWARN
-	case "NOTICE":
-		Log.Level = LogNOTICE
-	case "INFO":
-		Log.Level = LogINFO
-	case "DEBUG":
-		Log.Level = LogDEBUG
-	default:
-		panic("unsupported config/log/level: " + level)
-	}
-
-	var err error
-	Log.syslog, err = syslog.Dial("unixgram", output, syslog.LOG_NOTICE|syslog.LOG_USER, path.Base(os.Args[0]))
-	if err != nil {
-		log.Fatal(err)
+	if syslogLogger == nil {
+		log.Print(level.String() + ": " + msg)
+	} else {
+		var err error
+		switch level {
+		case LogDEBUG:
+			err = syslogLogger.Debug(msg)
+		case LogINFO:
+			err = syslogLogger.Info(msg)
+		case LogNOTICE:
+			err = syslogLogger.Notice(msg)
+		case LogWARN:
+			err = syslogLogger.Warning(msg)
+		default:
+			err = syslogLogger.Err(msg)
+		}
+		if err != nil {
+			log.Print(level.String() + ": " + msg)
+		}
 	}
 }
