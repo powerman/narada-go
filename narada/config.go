@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const dir = "config/"
+const configDir = "config/"
 
 var invalidName = regexp.MustCompile(`(?:\A|/)[.][.]?/`)
 var validName = regexp.MustCompile(`\A(?:[\w.-]+/)*[\w.-]+\z`)
@@ -24,7 +24,7 @@ var open = func(name string) (io.ReadCloser, error) {
 // config file - it will work as usually, by reading real file.
 func FakeConfig(configs map[string]string) {
 	open = func(name string) (io.ReadCloser, error) {
-		if content, ok := configs[name[len(dir):]]; ok {
+		if content, ok := configs[name[len(configDir):]]; ok {
 			return ioutil.NopCloser(strings.NewReader(content)), nil
 		}
 		return os.Open(name)
@@ -38,14 +38,19 @@ func GetConfig(path string) ([]byte, error) {
 	if invalidName.MatchString(path) || !validName.MatchString(path) {
 		panic("invalid config name: " + path)
 	}
-	file, err := open(dir + path)
-	defer file.Close()
+	lock, err := SharedLock(0)
+	if err != nil {
+		return nil, err
+	}
+	defer lock.UnLock()
+	file, err := open(configDir + path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
+	defer file.Close()
 	return ioutil.ReadAll(file)
 }
 
@@ -70,7 +75,7 @@ func GetConfigLine(path string) string {
 }
 
 // GetConfigInt return integer from first line of file "config/"+path.
-// If file not exists it will return 0.
+// If file not exists or empty it will return 0.
 // Panics if unable to read config or it contain more than one line or
 // that line doesn't contain one integer.
 func GetConfigInt(path string) int {
@@ -78,7 +83,7 @@ func GetConfigInt(path string) int {
 	if str == "" {
 		return 0
 	}
-	i, err := strconv.Atoi(strings.Trim(str, " \t\r"))
+	i, err := strconv.Atoi(strings.TrimSpace(str))
 	if err != nil {
 		panic("config " + path + " must contain integer")
 	}
