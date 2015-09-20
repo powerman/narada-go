@@ -15,7 +15,14 @@ var syslogLogger *syslog.Writer
 var InitLogError = initLog()
 
 // initLog is not thread-safe.
-func initLog() error {
+func initLog() (err error) {
+	defer func() {
+		if err != nil {
+			logLevel = LogDEBUG
+			syslogLogger = nil
+		}
+	}()
+
 	lock, err := SharedLock(0)
 	if err != nil {
 		return err
