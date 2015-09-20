@@ -2,32 +2,83 @@ package narada
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
+	"os"
+	"syscall"
 	"testing"
 )
 
 func TestFakeConfig(t *testing.T) {
-	cases := []struct {
+	type configCases []struct {
 		path    string
 		want    []byte
 		wanterr error
+	}
+	cases := []struct {
+		fake    map[string]string
+		configs configCases
 	}{
-		{"log/level", []byte("INFO"), nil},
-		{"fake", []byte("FAKE"), nil},
+		{
+			map[string]string{
+				"fake":     "FAKE1",
+				"dir/fake": "Fake\n2\n",
+			},
+			configCases{
+				{"nosuch", nil, nil},
+				{"fake", []byte("FAKE1"), nil},
+				{"file", []byte("REAL1"), nil},
+				{"unreadable", nil, &os.PathError{Op: "open", Path: "config/unreadable", Err: syscall.EACCES}},
+				{"dir", []byte{}, &os.PathError{Op: "read", Path: "config/dir", Err: syscall.EISDIR}},
+				{"dir/nosuch", nil, nil},
+				{"dir/fake", []byte("Fake\n2\n"), nil},
+				{"dir/file", []byte("Real2\n"), nil},
+			},
+		},
+		{
+			map[string]string{
+				"fake2": "FAKE2\n",
+			},
+			configCases{
+				{"nosuch", nil, nil},
+				{"fake", nil, nil},
+				{"fake2", []byte("FAKE2\n"), nil},
+				{"file", []byte("REAL1"), nil},
+				{"unreadable", nil, &os.PathError{Op: "open", Path: "config/unreadable", Err: syscall.EACCES}},
+				{"dir", []byte{}, &os.PathError{Op: "read", Path: "config/dir", Err: syscall.EISDIR}},
+				{"dir/nosuch", nil, nil},
+				{"dir/fake", nil, nil},
+				{"dir/file", []byte("Real2\n"), nil},
+			},
+		},
+		{
+			nil,
+			configCases{
+				{"nosuch", nil, nil},
+				{"fake", nil, nil},
+				{"fake2", nil, nil},
+				{"file", []byte("REAL1"), nil},
+				{"unreadable", nil, &os.PathError{Op: "open", Path: "config/unreadable", Err: syscall.EACCES}},
+				{"dir", []byte{}, &os.PathError{Op: "read", Path: "config/dir", Err: syscall.EISDIR}},
+				{"dir/nosuch", nil, nil},
+				{"dir/fake", nil, nil},
+				{"dir/file", []byte("Real2\n"), nil},
+			},
+		},
 	}
-	FakeConfig(map[string]string{"fake": "FAKE"})
+	origOpen := open
 	for _, c := range cases {
-		buf, err := GetConfig(c.path)
-		if buf != nil {
-			buf = bytes.TrimRight(buf, "\n")
-		}
-		if err == nil && c.wanterr != nil || err != nil && c.wanterr == nil || err != nil && err.Error() != c.wanterr.Error() {
-			t.Errorf("FakeGetConfig(%q), err = %v", c.path, err)
-		}
-		if buf == nil && c.want != nil || buf != nil && c.want == nil || bytes.Compare(buf, c.want) != 0 {
-			t.Errorf("FakeGetConfig(%q) = %#v, want = %#v", c.path, buf, c.want)
+		FakeConfig(c.fake)
+		for _, c := range c.configs {
+			buf, err := GetConfig(c.path)
+			if (buf == nil) != (c.want == nil) || bytes.Compare(buf, c.want) != 0 {
+				t.Errorf("FakeConfig(%q) = %#v, want = %#v", c.path, buf, c.want)
+			}
+			if fmt.Sprintf("%#v", err) != fmt.Sprintf("%#v", c.wanterr) {
+				t.Errorf("FakeConfig(%q), err = %#v, want %#v", c.path, err, c.wanterr)
+			}
 		}
 	}
+	open = origOpen
 }
 
 func TestGetConfig(t *testing.T) {
@@ -36,44 +87,46 @@ func TestGetConfig(t *testing.T) {
 		want    []byte
 		wanterr error
 	}{
-		{"log/level", []byte("INFO"), nil},
-		{"log/empty", nil, nil},
-		{"log", []byte{}, errors.New("read config/log: is a directory")},
+		{"nosuch", nil, nil},
+		{"empty", []byte{}, nil},
+		{"file", []byte("REAL1"), nil},
+		{"unreadable", nil, &os.PathError{Op: "open", Path: "config/unreadable", Err: syscall.EACCES}},
+		{"log", []byte{}, &os.PathError{Op: "read", Path: "config/log", Err: syscall.EISDIR}},
+		{"log/nosuch", nil, nil},
+		{"log/level", []byte("INFO\n"), nil},
 		{"log/no-such_dir.123/no-such_file.123", nil, nil},
 	}
 	for _, c := range cases {
 		buf, err := GetConfig(c.path)
-		if buf != nil {
-			buf = bytes.TrimRight(buf, "\n")
-		}
-		if err == nil && c.wanterr != nil || err != nil && c.wanterr == nil || err != nil && err.Error() != c.wanterr.Error() {
-			t.Errorf("GetConfig(%q), err = %v", c.path, err)
-		}
-		if buf == nil && c.want != nil || buf != nil && c.want == nil || bytes.Compare(buf, c.want) != 0 {
+		if (buf == nil) != (c.want == nil) || bytes.Compare(buf, c.want) != 0 {
 			t.Errorf("GetConfig(%q) = %#v, want = %#v", c.path, buf, c.want)
+		}
+		if fmt.Sprintf("%#v", err) != fmt.Sprintf("%#v", c.wanterr) {
+			t.Errorf("GetConfig(%q), err = %#v, want %#v", c.path, err, c.wanterr)
 		}
 	}
 }
 
 func TestGetConfigBadName(t *testing.T) {
-	cases := []struct{ path, msg string }{
-		{"", "invalid config name: "},
-		{" ", "invalid config name:  "},
-		{"./empty", "invalid config name: ./empty"},
-		{"../config/empty", "invalid config name: ../config/empty"},
-		{"log/./level", "invalid config name: log/./level"},
-		{"log/../empty", "invalid config name: log/../empty"},
-		{"bad:name", "invalid config name: bad:name"},
-		{"bad name", "invalid config name: bad name"},
+	cases := []string{
+		"",
+		" ",
+		"./empty",
+		"../config/empty",
+		"log/./level",
+		"log/../empty",
+		"bad:name",
+		"bad name",
 	}
-	for _, c := range cases {
-		var msg interface{}
+	for _, path := range cases {
+		var pnk interface{}
 		func() {
-			defer func() { msg = recover() }()
-			GetConfig(c.path)
+			defer func() { pnk = recover() }()
+			GetConfig(path)
 		}()
-		if msg == nil || msg.(string) != c.msg {
-			t.Errorf("GetConfig(%q), panic = %v, want %v", c.path, msg, c.msg)
+		wantpnk := "invalid config name: " + path
+		if fmt.Sprintf("%#v", pnk) != fmt.Sprintf("%#v", wantpnk) {
+			t.Errorf("GetConfig(%q), panic = %#v, want %#v", path, pnk, wantpnk)
 		}
 	}
 }
@@ -83,8 +136,11 @@ func TestGetConfigLine(t *testing.T) {
 		path string
 		want string
 	}{
+		{"nosuch", ""},
+		{"empty", ""},
+		{"log/type", "syslog"},
 		{"single_line", "line1"},
-		{"log/empty", ""},
+		{"int", " 42 "},
 	}
 	for _, c := range cases {
 		line := GetConfigLine(c.path)
@@ -95,22 +151,21 @@ func TestGetConfigLine(t *testing.T) {
 }
 
 func TestGetConfigLineBad(t *testing.T) {
-	cases := []struct{ path, msg string }{
-		{"log", "read config/log: is a directory"},
+	cases := []struct {
+		path    string
+		wantpnk interface{}
+	}{
+		{"log", &os.PathError{Op: "read", Path: "config/log", Err: syscall.EISDIR}},
 		{"multi_line", "config multi_line contain more than one line"},
 	}
 	for _, c := range cases {
-		var msg interface{}
+		var pnk interface{}
 		func() {
-			defer func() { msg = recover() }()
+			defer func() { pnk = recover() }()
 			GetConfigLine(c.path)
 		}()
-		switch v := msg.(type) {
-		case error:
-			msg = v.Error()
-		}
-		if msg == nil || msg.(string) != c.msg {
-			t.Errorf("GetConfigLine(%q), panic = %v, want %v", c.path, msg, c.msg)
+		if fmt.Sprintf("%#v", pnk) != fmt.Sprintf("%#v", c.wantpnk) {
+			t.Errorf("GetConfigLine(%q), panic = %#v, want %#v", c.path, pnk, c.wantpnk)
 		}
 	}
 }
@@ -120,8 +175,8 @@ func TestGetConfigInt(t *testing.T) {
 		path string
 		want int
 	}{
+		{"nosuch", 0},
 		{"empty", 0},
-		{"log/nosuch", 0},
 		{"int", 42},
 	}
 	for _, c := range cases {
@@ -133,21 +188,24 @@ func TestGetConfigInt(t *testing.T) {
 }
 
 func TestGetConfigIntBad(t *testing.T) {
-	cases := []struct{ path, msg string }{
+	cases := []struct {
+		path    string
+		wantpnk string
+	}{
+		{"multi_line", "config multi_line contain more than one line"},
 		{"log/level", "config log/level must contain integer"},
+		{"badint", "config badint must contain integer"},
+		{"twoint", "config twoint must contain integer"},
+		{"float", "config float must contain integer"},
 	}
 	for _, c := range cases {
-		var msg interface{}
+		var pnk interface{}
 		func() {
-			defer func() { msg = recover() }()
+			defer func() { pnk = recover() }()
 			GetConfigInt(c.path)
 		}()
-		switch v := msg.(type) {
-		case error:
-			msg = v.Error()
-		}
-		if msg == nil || msg.(string) != c.msg {
-			t.Errorf("GetConfigInt(%q), panic = %v, want %v", c.path, msg, c.msg)
+		if fmt.Sprintf("%#v", pnk) != fmt.Sprintf("%#v", c.wantpnk) {
+			t.Errorf("GetConfigInt(%q), panic = %#v, want %#v", c.path, pnk, c.wantpnk)
 		}
 	}
 }

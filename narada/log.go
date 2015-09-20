@@ -93,7 +93,7 @@ func NewLog(prefix string) *Log {
 	return &Log{prefix: prefix}
 }
 
-func (l *Log) Prefix() string {
+func (l Log) Prefix() string {
 	return l.prefix
 }
 
