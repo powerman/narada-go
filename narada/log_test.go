@@ -233,7 +233,23 @@ func TestLog(t *testing.T) {
 	l.NOTICE("%%30")
 	l.INFO("%%40")
 	l.DEBUG("%%50")
-	wantlines = []string{lineERR + "%%10", lineWARN + "%%20", lineNOTICE + "%%30", lineINFO + "%%40", lineDEBUG + "%%50"}
+	l.Print("%%60")
+	l.Printf("%%61")
+	l.Println("%%62")
+	if pnk := getpnk(func() { l.Panic("%%70") }); !reflect.DeepEqual(pnk, "%%70") {
+		t.Errorf("all+plain, panic=%#v, want %#v", pnk, "%%70")
+	}
+	if pnk := getpnk(func() { l.Panicf("%%71") }); !reflect.DeepEqual(pnk, "%71") {
+		t.Errorf("all+plain, panic=%#v, want %#v", pnk, "%71")
+	}
+	if pnk := getpnk(func() { l.Panicln("%%72") }); !reflect.DeepEqual(pnk, "%%72\n") {
+		t.Errorf("all+plain, panic=%#v, want %#v", pnk, "%%72\n")
+	}
+	wantlines = []string{
+		lineERR + "%%10", lineWARN + "%%20", lineNOTICE + "%%30", lineINFO + "%%40", lineDEBUG + "%%50",
+		lineNOTICE + "%%60", lineNOTICE + "%61", lineNOTICE + "%%62",
+		lineERR + "%%70", lineERR + "%71", lineERR + "%%72",
+	}
 	lines = getLines()
 	if !reflect.DeepEqual(lines, wantlines) {
 		t.Errorf("all+plain\nexp: %#v\ngot: %#v", wantlines, lines)
@@ -245,10 +261,37 @@ func TestLog(t *testing.T) {
 	l.NOTICE("%%3%d", 1)
 	l.INFO("%%4%d", 1)
 	l.DEBUG("%%5%d", 1)
-	wantlines = []string{lineERR + "%11", lineWARN + "%21", lineNOTICE + "%31"}
+	l.Print("%%6%d", 0)
+	l.Printf("%%6%d", 1)
+	l.Println("%%6%d", 2)
+	if pnk := getpnk(func() { l.Panic("%%7%d", 0) }); !reflect.DeepEqual(pnk, "%%7%d0") {
+		t.Errorf("level+sprintf, panic=%#v, want %#v", pnk, "%%7%d0")
+	}
+	if pnk := getpnk(func() { l.Panicf("%%7%d", 1) }); !reflect.DeepEqual(pnk, "%71") {
+		t.Errorf("level+sprintf, panic=%#v, want %#v", pnk, "%71")
+	}
+	if pnk := getpnk(func() { l.Panicln("%%7%d", 2) }); !reflect.DeepEqual(pnk, "%%7%d 2\n") {
+		t.Errorf("level+sprintf, panic=%#v, want %#v", pnk, "%%7%d 2\n")
+	}
+	wantlines = []string{
+		lineERR + "%11", lineWARN + "%21", lineNOTICE + "%31",
+		lineNOTICE + "%%6%d0", lineNOTICE + "%61", lineNOTICE + "%%6%d 2",
+		lineERR + "%%7%d0", lineERR + "%71", lineERR + "%%7%d 2",
+	}
 	lines = getLines()
 	if !reflect.DeepEqual(lines, wantlines) {
 		t.Errorf("level+sprintf\nexp: %#v\ngot: %#v", wantlines, lines)
+	}
+
+	logLevel = LogWARN
+	l.Print("63")
+	if pnk := getpnk(func() { l.Panic("73") }); !reflect.DeepEqual(pnk, "73") {
+		t.Errorf("level+sprint, panic=%#v, want %#v", pnk, "73")
+	}
+	wantlines = []string{lineERR + "73"}
+	lines = getLines()
+	if !reflect.DeepEqual(lines, wantlines) {
+		t.Errorf("level+sprint\nexp: %#v\ngot: %#v", wantlines, lines)
 	}
 
 	l = NewLog("pfx")
@@ -304,4 +347,12 @@ func getLines() []string {
 		res = append(res, line)
 	}
 	return res
+}
+
+func getpnk(f func()) (pnk interface{}) {
+	defer func() {
+		pnk = recover()
+	}()
+	f()
+	return
 }

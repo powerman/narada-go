@@ -104,6 +104,51 @@ func (l Log) Prefix() string {
 	return l.prefix
 }
 
+func (l Log) Print(v ...interface{}) {
+	l.write(LogNOTICE, fmt.Sprint(v...))
+}
+
+func (l Log) Printf(format string, v ...interface{}) {
+	l.write(LogNOTICE, fmt.Sprintf(format, v...))
+}
+
+func (l Log) Println(v ...interface{}) {
+	l.write(LogNOTICE, fmt.Sprintln(v...))
+}
+
+func (l Log) Fatal(v ...interface{}) {
+	l.write(LogERR, fmt.Sprint(v...))
+	os.Exit(1)
+}
+
+func (l Log) Fatalf(format string, v ...interface{}) {
+	l.write(LogERR, fmt.Sprintf(format, v...))
+	os.Exit(1)
+}
+
+func (l Log) Fatalln(v ...interface{}) {
+	l.write(LogERR, fmt.Sprintln(v...))
+	os.Exit(1)
+}
+
+func (l Log) Panic(v ...interface{}) {
+	s := fmt.Sprint(v...)
+	l.write(LogERR, s)
+	panic(s)
+}
+
+func (l Log) Panicf(format string, v ...interface{}) {
+	s := fmt.Sprintf(format, v...)
+	l.write(LogERR, s)
+	panic(s)
+}
+
+func (l Log) Panicln(v ...interface{}) {
+	s := fmt.Sprintln(v...)
+	l.write(LogERR, s)
+	panic(s)
+}
+
 func (l Log) ERR(format string, v ...interface{}) {
 	l.write(LogERR, format, v...)
 }
