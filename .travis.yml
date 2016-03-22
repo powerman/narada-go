@@ -1,13 +1,20 @@
+sudo: false
+
 language: go
 
 go:
-  - 1.1
-  - 1.2
-  - 1.3
   - 1.4
   - 1.5
   - 1.6
   - tip
+
+addons:
+  apt:
+    packages:
+      - socat
+
+cache:
+  apt: true
 
 before_install:
   - go get github.com/axw/gocov/gocov
@@ -18,4 +25,4 @@ script:
   - go test -v -race ./...
 
 after_success:
-  - test "$TRAVIS_GO_VERSION" = "1.4" && cd narada && goveralls -service=travis-ci
+  - test "$TRAVIS_GO_VERSION" = "1.6" && cd narada && goveralls -service=travis-ci
