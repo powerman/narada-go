@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"reflect"
 	"regexp"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -53,6 +54,11 @@ WAIT:
 }
 
 func TestInitLog(t *testing.T) {
+	errDialUnix := errors.New("dial unixgram var/log.sock: no such file or directory")
+	if runtime.Version() >= "go1.5" {
+		errDialUnix = errors.New("dial unixgram var/log.sock: connect: no such file or directory")
+	}
+
 	cases := []struct {
 		setup   func()
 		level   LogLevel
@@ -96,14 +102,14 @@ func TestInitLog(t *testing.T) {
 				FakeConfig(map[string]string{"log/type": ""})
 				InitLogError = initLog()
 			},
-			LogDEBUG, false, errors.New("dial unixgram var/log.sock: no such file or directory"),
+			LogDEBUG, false, errDialUnix,
 		},
 		{
 			func() {
 				FakeConfig(map[string]string{"log/type": "syslog"})
 				InitLogError = initLog()
 			},
-			LogDEBUG, false, errors.New("dial unixgram var/log.sock: no such file or directory"),
+			LogDEBUG, false, errDialUnix,
 		},
 		{
 			func() { fakeLog() },
