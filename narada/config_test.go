@@ -6,6 +6,7 @@ import (
 	"os"
 	"syscall"
 	"testing"
+	"time"
 )
 
 func TestFakeConfig(t *testing.T) {
@@ -206,6 +207,42 @@ func TestGetConfigIntBad(t *testing.T) {
 		}()
 		if fmt.Sprintf("%#v", pnk) != fmt.Sprintf("%#v", c.wantpnk) {
 			t.Errorf("GetConfigInt(%q), panic = %#v, want %#v", c.path, pnk, c.wantpnk)
+		}
+	}
+}
+
+func TestGetConfigDuration(t *testing.T) {
+	cases := []struct {
+		path string
+		want time.Duration
+	}{
+		{"duration", 3 * time.Second},
+	}
+	for _, c := range cases {
+		i := GetConfigDuration(c.path)
+		if i != c.want {
+			t.Errorf("GetConfigDuration(%q) = %#v, want = %#v", c.path, i, c.want)
+		}
+	}
+}
+
+func TestGetConfigDurationBad(t *testing.T) {
+	cases := []struct {
+		path    string
+		wantpnk string
+	}{
+		{"nosuch", "config nosuch must contain duration"},
+		{"empty", "config empty must contain duration"},
+		{"badint", "config badint must contain duration"},
+	}
+	for _, c := range cases {
+		var pnk interface{}
+		func() {
+			defer func() { pnk = recover() }()
+			GetConfigDuration(c.path)
+		}()
+		if fmt.Sprintf("%#v", pnk) != fmt.Sprintf("%#v", c.wantpnk) {
+			t.Errorf("GetConfigDuration(%q), panic = %#v, want %#v", c.path, pnk, c.wantpnk)
 		}
 	}
 }

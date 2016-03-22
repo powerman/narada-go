@@ -57,6 +57,7 @@ func setupTestDir() error {
 		{"config/float", "42.777", 0644},
 		{"config/multi_line", "line1\n\nline2\n\n\n", 0644},
 		{"config/single_line", "line1\n\n\n", 0644},
+		{"config/duration", "3s", 0644},
 		{"config/log/level", "INFO\n", 0644},
 		{"config/log/output", "var/log.sock", 0644},
 		{"config/log/type", "syslog", 0644},

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const configDir = "config/"
@@ -31,7 +32,7 @@ func FakeConfig(configs map[string]string) {
 	}
 }
 
-// GetConfig return contents of file "config/"+path.
+// GetConfig returns contents of file "config/"+path.
 // If file not exists it will return nil without any error.
 // Panics on invalid config name.
 func GetConfig(path string) ([]byte, error) {
@@ -54,9 +55,9 @@ func GetConfig(path string) ([]byte, error) {
 	return ioutil.ReadAll(file)
 }
 
-// GetConfigLine return first line of file "config/"+path.
+// GetConfigLine returns first line of file "config/"+path.
 // If file not exists it will return empty string.
-// Panics if unable to read config or it contain more than one line.
+// Panics if unable to read file or it contains more than one line.
 func GetConfigLine(path string) string {
 	cfg, err := GetConfig(path)
 	if err != nil {
@@ -74,9 +75,9 @@ func GetConfigLine(path string) string {
 	return string(cfg)
 }
 
-// GetConfigInt return integer from first line of file "config/"+path.
+// GetConfigInt returns integer from first line of file "config/"+path.
 // If file not exists or empty it will return 0.
-// Panics if unable to read config or it contain more than one line or
+// Panics if unable to read file or it contains more than one line or
 // that line doesn't contain one integer.
 func GetConfigInt(path string) int {
 	str := GetConfigLine(path)
@@ -88,4 +89,16 @@ func GetConfigInt(path string) int {
 		panic("config " + path + " must contain integer")
 	}
 	return i
+}
+
+// GetConfigDuration returns duration parsed from first line of file "config/"+path.
+// Panics if file not exists or empty or unable to read file or
+// file contains more than one line or that line doesn't contain duration
+// (see time.ParseDuration).
+func GetConfigDuration(path string) time.Duration {
+	d, err := time.ParseDuration(GetConfigLine(path))
+	if err != nil {
+		panic("config " + path + " must contain duration")
+	}
+	return d
 }
