@@ -37,6 +37,7 @@ func fakeLog() {
 				break
 			}
 		}
+		cmd.Wait()
 		close(fromSyslog)
 	}()
 WAIT:
@@ -51,6 +52,14 @@ WAIT:
 		}
 	}
 	InitLogError = initLog()
+}
+
+func fakeLogStop() {
+	err := cmd.Process.Kill()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cmd.Process.Wait()
 }
 
 func TestInitLog(t *testing.T) {
@@ -327,11 +336,7 @@ func TestLog(t *testing.T) {
 	}
 	buf.Reset()
 
-	err := cmd.Process.Kill()
-	if err != nil {
-		t.Error(err)
-	}
-	cmd.Wait()
+	fakeLogStop()
 	l.ERR("14")
 	l.WARN("2%d", 4)
 	want = "ERR: pfx14\nWARN: pfx24\n"
