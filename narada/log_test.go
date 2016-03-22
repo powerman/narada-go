@@ -63,9 +63,9 @@ func fakeLogStop() {
 }
 
 func TestInitLog(t *testing.T) {
-	errDialUnix := errors.New("dial unixgram var/log.sock: no such file or directory")
-	if runtime.Version() >= "go1.5" {
-		errDialUnix = errors.New("dial unixgram var/log.sock: connect: no such file or directory")
+	errDialUnix := errors.New("dial unixgram var/log.sock: connect: no such file or directory")
+	if runtime.Version() > "go" && runtime.Version() < "go1.5" {
+		errDialUnix = errors.New("dial unixgram var/log.sock: no such file or directory")
 	}
 
 	cases := []struct {
