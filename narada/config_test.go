@@ -211,6 +211,52 @@ func TestGetConfigIntBad(t *testing.T) {
 	}
 }
 
+func TestGetConfigIntBetween(t *testing.T) {
+	cases := []struct {
+		path string
+		min  int
+		max  int
+		want int
+	}{
+		{"nosuch", 0, 5, 0},
+		{"empty", -5, 0, 0},
+		{"int", 40, 45, 42},
+		{"int", 42, 45, 42},
+		{"int", 40, 42, 42},
+		{"int", 42, 42, 42},
+	}
+	for _, c := range cases {
+		i := GetConfigIntBetween(c.path, c.min, c.max)
+		if i != c.want {
+			t.Errorf("GetConfigIntBetween(%q,%d,%d) = %#v, want = %#v", c.path, c.min, c.max, i, c.want)
+		}
+	}
+}
+
+func TestGetConfigIntBetweenBad(t *testing.T) {
+	cases := []struct {
+		path    string
+		min     int
+		max     int
+		wantpnk string
+	}{
+		{"nosuch", 1, 5, "config nosuch must contain integer >= 1"},
+		{"empty", -5, -1, "config empty must contain integer <= -1"},
+		{"int", 43, 45, "config int must contain integer >= 43"},
+		{"int", 40, 41, "config int must contain integer <= 41"},
+	}
+	for _, c := range cases {
+		var pnk interface{}
+		func() {
+			defer func() { pnk = recover() }()
+			GetConfigIntBetween(c.path, c.min, c.max)
+		}()
+		if fmt.Sprintf("%#v", pnk) != fmt.Sprintf("%#v", c.wantpnk) {
+			t.Errorf("GetConfigIntBetween(%q,%d,%d), panic = %#v, want %#v", c.path, c.min, c.max, pnk, c.wantpnk)
+		}
+	}
+}
+
 func TestGetConfigDuration(t *testing.T) {
 	cases := []struct {
 		path string
@@ -243,6 +289,47 @@ func TestGetConfigDurationBad(t *testing.T) {
 		}()
 		if fmt.Sprintf("%#v", pnk) != fmt.Sprintf("%#v", c.wantpnk) {
 			t.Errorf("GetConfigDuration(%q), panic = %#v, want %#v", c.path, pnk, c.wantpnk)
+		}
+	}
+}
+
+func TestGetConfigDurationBetween(t *testing.T) {
+	cases := []struct {
+		path string
+		min  time.Duration
+		max  time.Duration
+		want time.Duration
+	}{
+		{"duration", 0, time.Minute, 3 * time.Second},
+		{"duration", 2 * time.Second, 4 * time.Second, 3 * time.Second},
+		{"duration", 3 * time.Second, 3 * time.Second, 3 * time.Second},
+	}
+	for _, c := range cases {
+		i := GetConfigDurationBetween(c.path, c.min, c.max)
+		if i != c.want {
+			t.Errorf("GetConfigDurationBetween(%q,%s,%s) = %#v, want = %#v", c.path, c.min, c.max, i, c.want)
+		}
+	}
+}
+
+func TestGetConfigDurationBetweenBad(t *testing.T) {
+	cases := []struct {
+		path    string
+		min     time.Duration
+		max     time.Duration
+		wantpnk string
+	}{
+		{"duration", 4 * time.Second, time.Minute, "config duration must contain duration >= 4s"},
+		{"duration", 1 * time.Second, 2 * time.Second, "config duration must contain duration <= 2s"},
+	}
+	for _, c := range cases {
+		var pnk interface{}
+		func() {
+			defer func() { pnk = recover() }()
+			GetConfigDurationBetween(c.path, c.min, c.max)
+		}()
+		if fmt.Sprintf("%#v", pnk) != fmt.Sprintf("%#v", c.wantpnk) {
+			t.Errorf("GetConfigDurationBetween(%q,%s,%s), panic = %#v, want %#v", c.path, c.min, c.max, pnk, c.wantpnk)
 		}
 	}
 }

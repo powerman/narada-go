@@ -2,6 +2,7 @@ package narada
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -91,6 +92,19 @@ func GetConfigInt(path string) int {
 	return i
 }
 
+// GetConfigIntBetween panics if value returned by GetConfigInt(path)
+// is less than min or greater than max.
+func GetConfigIntBetween(path string, min, max int) int {
+	i := GetConfigInt(path)
+	if i < min {
+		panic(fmt.Sprintf("config %s must contain integer >= %d", path, min))
+	}
+	if i > max {
+		panic(fmt.Sprintf("config %s must contain integer <= %d", path, max))
+	}
+	return i
+}
+
 // GetConfigDuration returns duration parsed from first line of file "config/"+path.
 // Panics if file not exists or empty or unable to read file or
 // file contains more than one line or that line doesn't contain duration
@@ -99,6 +113,19 @@ func GetConfigDuration(path string) time.Duration {
 	d, err := time.ParseDuration(GetConfigLine(path))
 	if err != nil {
 		panic("config " + path + " must contain duration")
+	}
+	return d
+}
+
+// GetConfigDurationBetween panics if value returned by GetConfigDuration(path)
+// is less than min or greater than max.
+func GetConfigDurationBetween(path string, min, max time.Duration) time.Duration {
+	d := GetConfigDuration(path)
+	if d < min {
+		panic(fmt.Sprintf("config %s must contain duration >= %s", path, min))
+	}
+	if d > max {
+		panic(fmt.Sprintf("config %s must contain duration <= %s", path, max))
 	}
 	return d
 }
