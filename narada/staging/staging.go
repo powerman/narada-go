@@ -88,7 +88,7 @@ func setUp() (err error) {
 		}
 	}
 
-	custom := pkgDir + "/testdata/narada.setup"
+	custom := pkgDir + "/testdata/staging.setup"
 	if _, err = os.Stat(custom); err == nil {
 		err = exec.Command(custom, pkgDir).Run()
 		if err != nil {
@@ -101,7 +101,7 @@ func setUp() (err error) {
 
 func TearDown(exitCode int) int {
 	var err error
-	custom := pkgDir + "/testdata/narada.teardown"
+	custom := pkgDir + "/testdata/staging.teardown"
 	if _, err = os.Stat(custom); err == nil {
 		err = exec.Command(custom, pkgDir).Run()
 		if err != nil {
