@@ -90,7 +90,9 @@ func setUp() (err error) {
 
 	custom := pkgDir + "/testdata/staging.setup"
 	if _, err = os.Stat(custom); err == nil {
-		err = exec.Command(custom, pkgDir).Run()
+		cmd := exec.Command(custom, pkgDir)
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+		err = cmd.Run()
 		if err != nil {
 			return err
 		}
@@ -103,7 +105,9 @@ func TearDown(exitCode int) int {
 	var err error
 	custom := pkgDir + "/testdata/staging.teardown"
 	if _, err = os.Stat(custom); err == nil {
-		err = exec.Command(custom, pkgDir).Run()
+		cmd := exec.Command(custom, pkgDir)
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+		err = cmd.Run()
 		if err != nil {
 			log.Print(err)
 			return exitCode
