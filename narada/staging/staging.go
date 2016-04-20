@@ -19,9 +19,14 @@ import (
 )
 
 var (
-	pkgDir string
-	tmpDir string
-	dirs   = []string{
+	// BaseDir is an original directory (where test was executed).
+	BaseDir string
+	// WorkDir is a current directory (with temporary narada project).
+	WorkDir string
+)
+
+var (
+	dirs = []string{
 		".backup",
 		"config",
 		"config/backup",
@@ -62,15 +67,15 @@ func init() {
 }
 
 func setUp() (err error) {
-	pkgDir, err = os.Getwd()
+	BaseDir, err = os.Getwd()
 	if err != nil {
 		return err
 	}
-	tmpDir, err = ioutil.TempDir("", "narada-staging.")
+	WorkDir, err = ioutil.TempDir("", "narada-staging.")
 	if err != nil {
 		return err
 	}
-	err = os.Chdir(tmpDir)
+	err = os.Chdir(WorkDir)
 	if err != nil {
 		return err
 	}
@@ -88,9 +93,9 @@ func setUp() (err error) {
 		}
 	}
 
-	custom := pkgDir + "/testdata/staging.setup"
+	custom := BaseDir + "/testdata/staging.setup"
 	if _, err = os.Stat(custom); err == nil {
-		cmd := exec.Command(custom, pkgDir)
+		cmd := exec.Command(custom, BaseDir)
 		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 		err = cmd.Run()
 		if err != nil {
@@ -103,9 +108,9 @@ func setUp() (err error) {
 
 func TearDown(exitCode int) int {
 	var err error
-	custom := pkgDir + "/testdata/staging.teardown"
+	custom := BaseDir + "/testdata/staging.teardown"
 	if _, err = os.Stat(custom); err == nil {
-		cmd := exec.Command(custom, pkgDir)
+		cmd := exec.Command(custom, BaseDir)
 		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 		err = cmd.Run()
 		if err != nil {
@@ -114,12 +119,12 @@ func TearDown(exitCode int) int {
 		}
 	}
 
-	err = os.Chdir(pkgDir)
+	err = os.Chdir(BaseDir)
 	if err != nil {
 		log.Print(err)
 		return exitCode
 	}
-	err = os.RemoveAll(tmpDir)
+	err = os.RemoveAll(WorkDir)
 	if err != nil {
 		log.Print(err)
 		return exitCode
