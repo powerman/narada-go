@@ -1,3 +1,3 @@
 package narada
 
-import _ "github.com/powerman/narada-go/narada/staging"
+import _ "github.com/powerman/narada-go/narada/staging" // run init()

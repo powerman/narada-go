@@ -17,7 +17,8 @@ func TestVersion(t *testing.T) {
 		t.Errorf("Version() = %q, want %q", ver, want)
 	}
 
-	if err := os.Chmod("VERSION", 0); err != nil {
+	err = os.Chmod("VERSION", 0)
+	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.Chmod("VERSION", 0644)

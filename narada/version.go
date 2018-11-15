@@ -11,8 +11,8 @@ func Version() (version string, err error) {
 	if err != nil {
 		return
 	}
+	defer lock.UnLock()
 	buf, err := ioutil.ReadFile("VERSION")
-	lock.UnLock()
 	if err != nil {
 		return
 	}

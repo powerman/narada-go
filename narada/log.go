@@ -15,7 +15,7 @@ var syslogLogger *syslog.Writer
 var InitLogError = initLog()
 
 // initLog is not thread-safe.
-func initLog() (err error) {
+func initLog() (err error) { // nolint:gocyclo
 	defer func() {
 		if err != nil {
 			logLevel = LogDEBUG
@@ -52,7 +52,7 @@ func initLog() (err error) {
 	logtype := GetConfigLine("log/type")
 	switch logtype {
 	case "":
-		logtype = "syslog"
+		// logtype = "syslog"
 	case "syslog":
 	default:
 		return errors.New("unsupported config/log/type: " + logtype)

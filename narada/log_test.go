@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"reflect"
 	"regexp"
-	"runtime"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -63,10 +63,8 @@ func fakeLogStop() {
 }
 
 func TestInitLog(t *testing.T) {
+	// error text for Go >= 1.5
 	errDialUnix := errors.New("dial unixgram var/log.sock: connect: no such file or directory")
-	if runtime.Version() > "go" && runtime.Version() < "go1.5" {
-		errDialUnix = errors.New("dial unixgram var/log.sock: no such file or directory")
-	}
 
 	cases := []struct {
 		setup   func()
@@ -160,27 +158,29 @@ func TestInitLog(t *testing.T) {
 			LogDEBUG, true, nil,
 		},
 	}
-	for _, c := range cases {
-		c.setup()
-		if logLevel != c.level {
-			t.Errorf("logLevel = %v, want %v", logLevel, c.level)
-		}
-		if (syslogLogger != nil) != c.ready {
-			if c.ready {
-				t.Errorf("syslogLogger = %v, want !=nil", syslogLogger)
-			} else {
-				t.Errorf("syslogLogger = %v, want nil", syslogLogger)
+	for i, c := range cases {
+		t.Run(strconv.Itoa(i+1), func(t *testing.T) {
+			c.setup()
+			if logLevel != c.level {
+				t.Errorf("logLevel = %v, want %v", logLevel, c.level)
 			}
-		}
-		if (InitLogError == nil) != (c.wanterr == nil) || InitLogError != nil && InitLogError.Error() != c.wanterr.Error() {
-			t.Errorf("InitLogError = %v, want %v", InitLogError, c.wanterr)
-		}
+			if (syslogLogger != nil) != c.ready {
+				if c.ready {
+					t.Errorf("syslogLogger = %v, want !=nil", syslogLogger)
+				} else {
+					t.Errorf("syslogLogger = %v, want nil", syslogLogger)
+				}
+			}
+			if (InitLogError == nil) != (c.wanterr == nil) || InitLogError != nil && InitLogError.Error() != c.wanterr.Error() {
+				t.Errorf("InitLogError = %v, want %v", InitLogError, c.wanterr)
+			}
+		})
 	}
 }
 
 func TestLogLevel(t *testing.T) {
 	var level LogLevel
-	cases := []struct {
+	cases := []struct { // nolint:maligned
 		want LogLevel
 		str  string
 		next LogLevel
@@ -227,7 +227,7 @@ const (
 	lineDEBUG  = "<15>: "
 )
 
-func TestLog(t *testing.T) {
+func TestLog(t *testing.T) { // nolint:gocyclo
 	l := NewLog("")
 
 	l.ERR("---8<---")
@@ -276,16 +276,16 @@ func TestLog(t *testing.T) {
 	l.NOTICE("%%3%d", 1)
 	l.INFO("%%4%d", 1)
 	l.DEBUG("%%5%d", 1)
-	l.Print("%%6%d", 0)
+	l.Print("%%6%"+"d", 0)
 	l.Printf("%%6%d", 1)
-	l.Println("%%6%d", 2)
-	if pnk := getpnk(func() { l.Panic("%%7%d", 0) }); !reflect.DeepEqual(pnk, "%%7%d0") {
+	l.Println("%%6%"+"d", 2)
+	if pnk := getpnk(func() { l.Panic("%%7%"+"d", 0) }); !reflect.DeepEqual(pnk, "%%7%d0") {
 		t.Errorf("level+sprintf, panic=%#v, want %#v", pnk, "%%7%d0")
 	}
 	if pnk := getpnk(func() { l.Panicf("%%7%d", 1) }); !reflect.DeepEqual(pnk, "%71") {
 		t.Errorf("level+sprintf, panic=%#v, want %#v", pnk, "%71")
 	}
-	if pnk := getpnk(func() { l.Panicln("%%7%d", 2) }); !reflect.DeepEqual(pnk, "%%7%d 2\n") {
+	if pnk := getpnk(func() { l.Panicln("%%7%"+"d", 2) }); !reflect.DeepEqual(pnk, "%%7%d 2\n") {
 		t.Errorf("level+sprintf, panic=%#v, want %#v", pnk, "%%7%d 2\n")
 	}
 	wantlines = []string{

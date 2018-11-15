@@ -71,7 +71,7 @@ func TestFakeConfig(t *testing.T) {
 		FakeConfig(c.fake)
 		for _, c := range c.configs {
 			buf, err := GetConfig(c.path)
-			if (buf == nil) != (c.want == nil) || bytes.Compare(buf, c.want) != 0 {
+			if (buf == nil) != (c.want == nil) || !bytes.Equal(buf, c.want) {
 				t.Errorf("FakeConfig(%q) = %#v, want = %#v", c.path, buf, c.want)
 			}
 			if fmt.Sprintf("%#v", err) != fmt.Sprintf("%#v", c.wanterr) {
@@ -99,7 +99,7 @@ func TestGetConfig(t *testing.T) {
 	}
 	for _, c := range cases {
 		buf, err := GetConfig(c.path)
-		if (buf == nil) != (c.want == nil) || bytes.Compare(buf, c.want) != 0 {
+		if (buf == nil) != (c.want == nil) || !bytes.Equal(buf, c.want) {
 			t.Errorf("GetConfig(%q) = %#v, want = %#v", c.path, buf, c.want)
 		}
 		if fmt.Sprintf("%#v", err) != fmt.Sprintf("%#v", c.wanterr) {
