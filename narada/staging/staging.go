@@ -8,6 +8,11 @@
 // To cleanup that directory after tests call TearDown like this:
 //
 //   func TestMain(m *testing.M) { os.Exit(staging.TearDown(m.Run())) }
+//
+// In case you're using Go 1.13 or newer you'll have to manually call
+// SetUp first (it has no effect if it was already called), e.g.:
+//
+//   func TestMain(m *testing.M) { staging.SetUp(); os.Exit(staging.TearDown(m.Run())) }
 package staging
 
 import (
@@ -58,11 +63,22 @@ var (
 )
 
 func init() {
-	if flag.Lookup("test.v") != nil {
-		err := setUp()
-		if err != nil {
-			log.Fatal(err)
-		}
+	if flag.Lookup("test.v") != nil { // Works only in Go <1.13.
+		SetUp()
+	}
+}
+
+var setupRan bool
+
+func SetUp() {
+	if setupRan {
+		return
+	}
+	setupRan = true
+
+	err := setUp()
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
