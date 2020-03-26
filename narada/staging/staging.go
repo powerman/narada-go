@@ -16,6 +16,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 var (
@@ -58,7 +59,7 @@ var (
 )
 
 func init() {
-	if flag.Lookup("test.v") != nil {
+	if flag.Lookup("test.v") != nil || strings.HasSuffix(os.Args[0], ".test") {
 		err := setUp()
 		if err != nil {
 			log.Fatal(err)
